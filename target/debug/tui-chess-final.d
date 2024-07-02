@@ -1,0 +1,1 @@
+/home/mamut/all/programming/tui-chess-final/target/debug/tui-chess-final: /home/mamut/all/programming/tui-chess-final/src/graphics.rs /home/mamut/all/programming/tui-chess-final/src/main.rs /home/mamut/all/programming/tui-chess-final/src/rules.rs

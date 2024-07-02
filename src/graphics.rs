@@ -2,6 +2,7 @@ extern crate termion;
 
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
+use std::process;
 
 use std::io::{Write, stdout, stdin, Stdout, Stdin, Read};
 
@@ -44,6 +45,16 @@ mod graphics {
         "║ Player vs. Player          ┆           ║",
         "║ Player vs. AI  (Stockfish) ┆           ║",
         "╚════════════════════════════════════════╝"
+    ];
+
+    pub const PROMOTION_SCREEN: &'static [&'static str] = &[
+        "╔═══════════════════════════════════════╗",
+        "║─────────PROMOTE PAWN──────────────────║",
+        "║───────────────────────────────────────║",
+        "║    ♜         ♞         ♝         ♛    ║",
+        "║    |         |         |         |    ║",
+        "║    R         N         B         Q    ║",
+        "╚═══════════════════════════════════════╝"
     ];
 }
 
@@ -112,7 +123,6 @@ pub fn start_screen() {
         y += 1;
     }
 }
-
 
 pub fn help_screen() {
     clear_screen();
@@ -192,4 +202,40 @@ pub fn display_all(board: [[usize;8];8]) {
 pub fn display_move(command: String) {
     let content = format!("MOVE : {}", command);
     draw(5, 12, content, "white");
+}
+
+pub fn promotion_screen() {
+    let x: u32 = 3;
+    let mut y: u32 = 6;
+
+    for row in graphics::PROMOTION_SCREEN {
+        draw(x, y, row.to_string(), "white");
+        y += 1;
+    }
+}
+
+pub fn end_screen(w: i32) {
+    clear_screen();
+
+    let end_screen = [
+        "╔════════════════════════════════╗",
+        "║───────────      WON────────────║",
+        "╚════════════════════════════════╝",
+    ];
+
+    let x: u32 = 5;
+    let mut y: u32 = 15;
+
+    for row in end_screen {
+        draw(x, y, row.to_string(), "white");
+        y += 1;
+    }
+
+    draw(17, 16, w.to_string(), "red");
+
+    process::exit(1);
+
+
+
+
 }

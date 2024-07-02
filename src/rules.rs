@@ -4,6 +4,7 @@ use termion::input::{MouseTerminal, TermRead};
 use termion::raw::IntoRawMode;
 use crate::Game;
 use crate::graphics;
+use crate::graphics::draw;
 use crate::Round;
 
 pub(crate) fn move_piece(s: &mut Game) -> bool {
@@ -20,28 +21,306 @@ pub(crate) fn move_piece(s: &mut Game) -> bool {
 
             let instructions = get_instructions(s, pos.clone());
 
-            println!("{:?}", instructions);
-
             s.board.board = execute_instructions(original_board, instructions);
 
-            graphics::display_board(s.board.board);
+            // check for mates
 
-            // if execute_instructions(instructions) == true {
-            //     if king_in_danger(s) == false {
-            //         return true
-            //     } else {
-            //         s.board.board = original_board;
-            //         return false
-            //     }
-            // }
+            if is_mate(s).0 == true {
+                graphics::end_screen(is_mate(s).1);
+            }
+
+            // check if king is in danger
+
+            return match s.round {
+                Round::White => {
+                    if king_in_danger(s, 11) == false {
+                        update_castles_king(s);
+                        promotion_screen(s);
+                        true
+                    } else {
+                        s.board.board = original_board;
+                        false
+                    }
+                }
+                Round::Black => {
+                    if king_in_danger(s, 5) == false {
+                        update_castles_king(s);
+                        promotion_screen(s);
+                        true
+                    } else {
+                        s.board.board = original_board;
+                        false
+                    }
+                }
+            }
+
+
         }
     }
 
     return false
 }
 
-fn king_in_danger(s: &mut Game) -> bool {
-    todo!()
+fn is_mate(s: &mut Game) -> (bool, i32) {
+
+    let original_board = s.board.board;
+
+    // check if there is a check on a king
+
+    if king_in_danger(s, 11) == true {
+
+        // check if no moves are possible
+
+        for x in 0..8 {
+            for y in 0..8 {
+                if s.board.board[x][y] == 7 || s.board.board[x][y] == 8 || s.board.board[x][y] == 9 || s.board.board[x][y] == 10 || s.board.board[x][y] == 11 || s.board.board[x][y] == 12 {
+                    let mut list_of_moves = get_possible_moves(vec![x as i32, y as i32], s, s.board.board[x][y] as i32);
+
+                    for m in list_of_moves {
+
+                        let mut piece = s.board.board[x][y];
+
+                        let mut instructions = vec![vec![x as i32, y as i32, 0], vec![m[0] as i32, m[1] as i32, piece as i32]];
+
+                        s.board.board = execute_instructions(s.board.board, instructions);
+
+                        if king_in_danger(s, 11) == false {
+                            s.board.board = original_board;
+                            return (false, 11);
+                        }
+
+                        s.board.board = original_board;
+
+                    }
+                }
+            }
+        }
+
+        return (true, 11);
+
+    } else if king_in_danger(s, 5) == true {
+
+        // check if no moves are possible
+
+        for x in 0..8 {
+            for y in 0..8 {
+                if s.board.board[x][y] == 1 || s.board.board[x][y] == 2 || s.board.board[x][y] == 3 || s.board.board[x][y] == 4 || s.board.board[x][y] == 5 || s.board.board[x][y] == 6 {
+                    let mut list_of_moves = get_possible_moves(vec![x as i32, y as i32], s, s.board.board[x][y] as i32);
+
+                    for m in list_of_moves {
+
+                        let mut piece = s.board.board[x][y];
+
+                        let mut instructions = vec![vec![x as i32, y as i32, 0], vec![m[0] as i32, m[1] as i32, piece as i32]];
+
+                        s.board.board = execute_instructions(s.board.board, instructions);
+
+                        if king_in_danger(s, 5) == false {
+                            s.board.board = original_board;
+                            return (false, 5);
+                        }
+
+                        s.board.board = original_board;
+
+                    }
+                }
+            }
+        }
+
+        return (true, 5);
+    } else {
+        return (false, 0);
+    }
+
+
+}
+
+fn promotion_screen(s: &mut Game) {
+
+    let mut pawn_position= vec![8, 8];
+
+    // check row 0
+
+    for x in 0..8 {
+        if s.board.board[0][x] == 12 {
+            graphics::promotion_screen();
+            pawn_position = vec![0, x as i32];
+        }
+    }
+
+    // check row 7
+
+    for x in 0..8 {
+        if s.board.board[7][x] == 6 {
+            graphics::promotion_screen();
+            pawn_position = vec![7, x as i32];
+        }
+    }
+
+    if pawn_position == vec![8, 8] {
+        return;
+    }
+
+    let mut piece: i32 = 0;
+
+    let stdin = stdin();
+    let mut stdout = stdout().into_raw_mode().unwrap();
+
+    for c in stdin.keys() {
+        write!(stdout,
+               "{}{}",
+               termion::cursor::Goto(1, 1),
+               termion::clear::CurrentLine)
+            .unwrap();
+
+        match c.unwrap() {
+            Key::Char('R') | Key::Char('r' )=> {
+                piece = 1;
+                break;
+            },
+            Key::Char('N') | Key::Char('n') => {
+                piece = 2;
+                break;
+            },
+            Key::Char('B') | Key::Char('b') => {
+                piece = 3;
+                break;
+            }
+            Key::Char('Q') | Key::Char('q') => {
+                piece = 4;
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    match piece {
+        1 => {
+            match pawn_position[0] {
+                0 => {
+                    s.board.board[pawn_position[0] as usize][pawn_position[1] as usize] = 7
+                }
+                7 => {
+                    s.board.board[pawn_position[0] as usize][pawn_position[1] as usize] = 1
+                }
+                _ => {}
+            }
+        }
+        2 => {
+            match pawn_position[0] {
+                0 => {
+                    s.board.board[pawn_position[0] as usize][pawn_position[1] as usize] = 8
+                }
+                7 => {
+                    s.board.board[pawn_position[0] as usize][pawn_position[1] as usize] = 2
+                }
+                _ => {}
+            }
+        }
+        3 => {
+            match pawn_position[0] {
+                0 => {
+                    s.board.board[pawn_position[0] as usize][pawn_position[1] as usize] = 9
+
+                }
+                7 => {
+                    s.board.board[pawn_position[0] as usize][pawn_position[1] as usize] = 3
+                }
+                _ => {}
+            }
+        }
+        4 => {
+            match pawn_position[0] {
+                0 => {
+                    s.board.board[pawn_position[0] as usize][pawn_position[1] as usize] = 10
+                }
+                7 => {
+                    s.board.board[pawn_position[0] as usize][pawn_position[1] as usize] = 4
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+
+
+}
+
+fn king_in_danger(s: &mut Game, k: i32) -> bool {
+
+    // find out whose turn it is
+
+    match k {
+        11 => {
+            // check if the white king is in danger (check on the white king)
+
+            let mut danger_zones: Vec<Vec<i32>> = vec![];
+            let mut white_king_position: Vec<i32> = vec![8, 8];
+
+            for x in 0..8 {
+                for y in 0..8 {
+                    if s.board.board[x][y] == 11 {
+                        white_king_position = vec![x as i32, y as i32];
+                    }
+                }
+            }
+
+            // find all the places black pieces can go
+
+            for x in 0..8 {
+                for y in 0..8 {
+                    match s.board.board[x][y] {
+                        1 | 2 | 3 | 4 | 5 | 6 => {
+                            let mut individual_danger_zones = get_possible_moves(vec![x as i32, y as i32], s, s.board.board[x as usize][y as usize] as i32);
+                            danger_zones.extend(individual_danger_zones.clone());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            if danger_zones.contains(&white_king_position) {
+                return true
+            }
+
+        }
+        5 => {
+            // check if the white king is in danger (check on the white king)
+
+            let mut danger_zones: Vec<Vec<i32>> = vec![];
+            let mut black_king_position: Vec<i32> = vec![8, 8];
+
+            for x in 0..8 {
+                for y in 0..8 {
+                    if s.board.board[x][y] == 5 {
+                        black_king_position = vec![x as i32, y as i32];
+                    }
+                }
+            }
+
+            // find all the places white pieces can go
+
+            for x in 0..8 {
+                for y in 0..8 {
+                    match s.board.board[x][y] {
+                        7 | 8 | 9 | 10 | 11 | 12 => {
+                            let mut individual_danger_zones = get_possible_moves(vec![x as i32, y as i32], s, s.board.board[x as usize][y as usize] as i32);
+                            danger_zones.extend(individual_danger_zones.clone());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            if danger_zones.contains(&black_king_position) {
+                return true
+            }
+
+        }
+        _ => {}
+    }
+
+    return false
 }
 
 fn execute_instructions(board: [[usize; 8]; 8], instructions: Vec<Vec<i32>>) -> [[usize; 8]; 8] {
@@ -221,94 +500,73 @@ fn get_command() -> String {
 fn get_possible_moves(position: Vec<i32>, s: &mut Game, piece: i32) -> Vec<Vec<i32>> {
     let mut positions = vec![];
 
-
     match piece {
 
         // White pawn
 
         12 => {
-            // Check if you could move a square in front
+
             if position[0] != 0 {
 
-                // Check if the position in front of the pawn is empty
                 if s.board.board[position[0] as usize - 1][position[1] as usize] == 0 {
                     positions.push(vec![position[0] - 1, position[1]])
                 }
 
-                // Capture to the left
-                if position[1] as i32 - 1 >= 0 {
-                    // Check if the position up-left has enemy
-                    match s.board.board[position[0] as usize - 1][position[1] as usize - 1] {
-                        1 | 2 | 3 | 4 | 5 | 6 => {
-                            positions.push(vec![position[0] - 1, position[1] - 1])
-                        }
-                        _ => {}
+                // check to the left
+
+                if position[1] != 0 {
+                    if s.board.board[position[0] as usize - 1][position[1] as usize - 1] == 0 {
+                        positions.push(vec![position[0] - 1, position[1] - 1])
                     }
                 }
 
-                // Capture to the right
-                if position[1] as i32 - 1 <= 7 {
-                    // Check if the position up-right has enemy
-                    match s.board.board[position[0] as usize - 1][position[1] as usize + 1] {
-                        1 | 2 | 3 | 4 | 5 | 6 => {
-                            positions.push(vec![position[0] - 1, position[1] + 1])
-                        }
-                        _ => {}
+                // check to the right
+
+                if position[1] != 7 {
+                    if s.board.board[position[0] as usize - 1][position[1] as usize + 1] == 0 {
+                        positions.push(vec![position[0] - 1, position[1] + 1])
                     }
                 }
 
             }
 
             if position[0] == 6 {
-                // Pawn in original place
                 if s.board.board[position[0] as usize - 2][position[1] as usize] == 0 {
-                    // Position 2x in-front of Pawn empty
                     positions.push(vec![position[0] - 2, position[1]])
                 }
             }
-
-
 
         },
 
         // Black pawn
 
         6 => {
-            // Check if you could move a square in front
             if position[0] != 7 {
 
-                // Check if the position in front of the pawn is empty
                 if s.board.board[position[0] as usize + 1][position[1] as usize] == 0 {
                     positions.push(vec![position[0] + 1, position[1]])
                 }
 
-                // Capture to the left
-                if position[1] as i32 - 1 >= 0 {
-                    // Check if the position up-left has enemy
-                    match s.board.board[position[0] as usize + 1][position[1] as usize - 1] {
-                        1 | 2 | 3 | 4 | 5 | 6 => {
-                            positions.push(vec![position[0] + 1, position[1] - 1])
-                        }
-                        _ => {}
+                // check to the left
+
+                if position[1] != 0 {
+                    if s.board.board[position[0] as usize + 1][position[1] as usize - 1] == 0 {
+                        positions.push(vec![position[0] + 1, position[1] - 1])
                     }
                 }
 
-                // Capture to the right
-                if position[1] as i32 + 1 <= 7 {
-                    // Check if the position up-right has enemy
-                    match s.board.board[position[0] as usize + 1][position[1] as usize + 1] {
-                        1 | 2 | 3 | 4 | 5 | 6 => {
-                            positions.push(vec![position[0] + 1, position[1] + 1])
-                        }
-                        _ => {}
+                // check to the right
+
+                if position[1] != 7 {
+                    if s.board.board[position[0] as usize + 1][position[1] as usize + 1] == 0 {
+                        positions.push(vec![position[0] + 1, position[1] + 1])
                     }
                 }
+
             }
 
             if position[0] == 1 {
-                // Pawn in original place
                 if s.board.board[position[0] as usize + 2][position[1] as usize] == 0 {
-                    // Position 2x in-front of Pawn empty
                     positions.push(vec![position[0] + 2, position[1]])
                 }
             }
@@ -1404,5 +1662,49 @@ fn is_castling(s: &mut Game, positions: Vec<i32>) -> bool {
     }
 
     return false
+
+}
+
+fn update_castles_king(s: &mut Game) {
+
+    // white checkers
+
+    // white king
+
+    if s.board.board[7][4] != 11 {
+        s.board.white_original_position_checkers[0] = false;
+    }
+
+    // left white rook
+
+    if s.board.board[7][0] != 7 {
+        s.board.white_original_position_checkers[1] = false;
+    }
+
+    // right white rook
+
+    if s.board.board[7][7] != 7 {
+        s.board.white_original_position_checkers[2] = false;
+    }
+
+    // black checkers
+
+    // black king
+
+    if s.board.board[0][4] != 5 {
+        s.board.black_original_position_checkers[0] = false;
+    }
+
+    // left black castle
+
+    if s.board.board[0][0] != 1 {
+        s.board.black_original_position_checkers[1] = false;
+    }
+
+    // right black castle
+
+    if s.board.board[0][7] != 1 {
+        s.board.black_original_position_checkers[2] = false;
+    }
 
 }
