@@ -1,10 +1,10 @@
 extern crate termion;
 
+use std::io::{stdin, stdout, Read, Stdin, Stdout, Write};
+use std::process;
+use termion::event::{Event, Key};
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
-use std::process;
-
-use std::io::{Write, stdout, stdin, Stdout, Stdin, Read};
 
 mod graphics {
     pub const SEPARATOR_VERTICAL: &'static str = "║";
@@ -13,7 +13,9 @@ mod graphics {
     pub const CORNER_RIGHT_TOP: &'static str = "╗";
     pub const CORNER_RIGHT_BOTTOM: &'static str = "╝";
     pub const LINE: &'static str = "═";
-    pub const PIECES: [&str;13] = [" ", "♖", "♘", "♗", "♕", "♔", "♙", "♜", "♞", "♝", "♛", "♚", "♟︎"];
+    pub const PIECES: [&str; 13] = [
+        " ", "♖", "♘", "♗", "♕", "♔", "♙", "♜", "♞", "♝", "♛", "♚", "♟︎",
+    ];
     pub const START_SCREEN: &'static [&'static str] = &[
         "╔══════════════════════════════╗",
         "║───────CHESS - Mamut──────────║",
@@ -25,7 +27,7 @@ mod graphics {
         "║ q ┆ quit                     ║",
         "║ d ┆ debug                    ║",
         "║ n ┆ switch modes             ║",
-        "╚═══╧══════════════════════════╝"
+        "╚═══╧══════════════════════════╝",
     ];
     pub const HELP_SCREEN: &'static [&'static str] = &[
         "╔═══════════════════════════════════════════════════════════════════╗",
@@ -35,7 +37,7 @@ mod graphics {
         "║            ┆ {X:Y = Row:Column of your piece}                     ║",
         "║            ┆ {H:Z = Row:Column of the square you want to move to} ║",
         "║ s          ┆ start screen                                         ║",
-        "╚═══════════════════════════════════════════════════════════════════╝"
+        "╚═══════════════════════════════════════════════════════════════════╝",
     ];
 
     pub const MODE_SCREEN: &'static [&'static str] = &[
@@ -44,7 +46,7 @@ mod graphics {
         "║────────────────────────────────────────║",
         "║ Player vs. Player          ┆           ║",
         "║ Player vs. AI  (Stockfish) ┆           ║",
-        "╚════════════════════════════════════════╝"
+        "╚════════════════════════════════════════╝",
     ];
 
     pub const PROMOTION_SCREEN: &'static [&'static str] = &[
@@ -54,65 +56,71 @@ mod graphics {
         "║    ♜         ♞         ♝         ♛    ║",
         "║    |         |         |         |    ║",
         "║    R         N         B         Q    ║",
-        "╚═══════════════════════════════════════╝"
+        "╚═══════════════════════════════════════╝",
     ];
 }
 
 pub fn clear_screen() {
-
     let stdin = stdin();
     let mut stdout = stdout().into_raw_mode().unwrap();
 
-    write!(stdout,
-           "{}{}{}",
-           termion::clear::All,
-           termion::cursor::Goto(1, 1),
-           termion::cursor::Hide)
-        .unwrap();
+    write!(
+        stdout,
+        "{}{}{}",
+        termion::clear::All,
+        termion::cursor::Goto(1, 1),
+        termion::cursor::Hide
+    )
+    .unwrap();
 
     stdout.flush().unwrap();
 }
 
 pub fn draw(x: u32, y: u32, content: String, color: &str) {
-
     let stdin = stdin();
     let mut stdout = stdout().into_raw_mode().unwrap();
 
-
     match color {
         "red" => {
-
-            write!(stdout, "{}{}{}{}",
-                   termion::cursor::Goto(x as u16, y as u16),
-                   termion::color::Fg(termion::color::Red),
-                   content,
-                   termion::cursor::Hide).unwrap();
+            write!(
+                stdout,
+                "{}{}{}{}",
+                termion::cursor::Goto(x as u16, y as u16),
+                termion::color::Fg(termion::color::Red),
+                content,
+                termion::cursor::Hide
+            )
+            .unwrap();
             stdout.flush().unwrap();
-        },
+        }
         "green" => {
-
-            write!(stdout, "{}{}{}{}",
-                   termion::cursor::Goto(x as u16, y as u16),
-                   termion::color::Fg(termion::color::Green),
-                   content,
-                   termion::cursor::Hide).unwrap();
+            write!(
+                stdout,
+                "{}{}{}{}",
+                termion::cursor::Goto(x as u16, y as u16),
+                termion::color::Fg(termion::color::Green),
+                content,
+                termion::cursor::Hide
+            )
+            .unwrap();
             stdout.flush().unwrap();
-        },
+        }
         _ => {
-
-            write!(stdout, "{}{}{}{}",
-                   termion::cursor::Goto(x as u16, y as u16),
-                   termion::color::Fg(termion::color::White),
-                   content,
-                   termion::cursor::Hide).unwrap();
+            write!(
+                stdout,
+                "{}{}{}{}",
+                termion::cursor::Goto(x as u16, y as u16),
+                termion::color::Fg(termion::color::White),
+                content,
+                termion::cursor::Hide
+            )
+            .unwrap();
             stdout.flush().unwrap();
         }
     }
-
 }
 
 pub fn start_screen() {
-
     clear_screen();
 
     let x: u32 = 25;
@@ -136,32 +144,90 @@ pub fn help_screen() {
     }
 }
 
-pub fn display_board(board: [[usize;8];8]) {
-
+pub fn display_board(board: [[usize; 8]; 8]) {
     let x_left_corner: u32 = 5;
     let y_top: u32 = 15;
 
     for index in 0..8 {
         for scnd_index in 0..8 {
-
             // Left wall
-            draw((x_left_corner + (scnd_index * 5)), (y_top + (index * 3)), graphics::CORNER_LEFT_TOP.to_string(), "white");
-            draw((x_left_corner + (scnd_index * 5)), (y_top + (index * 3) + 1), graphics::SEPARATOR_VERTICAL.to_string(), "white");
-            draw((x_left_corner + (scnd_index * 5)), (y_top + (index * 3) + 2), graphics::CORNER_LEFT_BOTTOM.to_string(), "white");
+            draw(
+                (x_left_corner + (scnd_index * 5)),
+                (y_top + (index * 3)),
+                graphics::CORNER_LEFT_TOP.to_string(),
+                "white",
+            );
+            draw(
+                (x_left_corner + (scnd_index * 5)),
+                (y_top + (index * 3) + 1),
+                graphics::SEPARATOR_VERTICAL.to_string(),
+                "white",
+            );
+            draw(
+                (x_left_corner + (scnd_index * 5)),
+                (y_top + (index * 3) + 2),
+                graphics::CORNER_LEFT_BOTTOM.to_string(),
+                "white",
+            );
 
             // Right wall
-            draw((x_left_corner + (scnd_index * 5) + 4), (y_top + (index * 3)), graphics::CORNER_RIGHT_TOP.to_string(), "white");
-            draw((x_left_corner + (scnd_index * 5) + 4), (y_top + (index * 3) + 1), graphics::SEPARATOR_VERTICAL.to_string(), "white");
-            draw((x_left_corner + (scnd_index * 5) + 4), (y_top + (index * 3) + 2), graphics::CORNER_RIGHT_BOTTOM.to_string(), "white");
+            draw(
+                (x_left_corner + (scnd_index * 5) + 4),
+                (y_top + (index * 3)),
+                graphics::CORNER_RIGHT_TOP.to_string(),
+                "white",
+            );
+            draw(
+                (x_left_corner + (scnd_index * 5) + 4),
+                (y_top + (index * 3) + 1),
+                graphics::SEPARATOR_VERTICAL.to_string(),
+                "white",
+            );
+            draw(
+                (x_left_corner + (scnd_index * 5) + 4),
+                (y_top + (index * 3) + 2),
+                graphics::CORNER_RIGHT_BOTTOM.to_string(),
+                "white",
+            );
 
             // Line
-            draw((x_left_corner + (scnd_index * 5) + 1), (y_top + (index * 3)), graphics::LINE.to_string(), "white");
-            draw((x_left_corner + (scnd_index * 5) + 2), (y_top + (index * 3)), graphics::LINE.to_string(), "white");
-            draw((x_left_corner + (scnd_index * 5) + 3), (y_top + (index * 3)), graphics::LINE.to_string(), "white");
+            draw(
+                (x_left_corner + (scnd_index * 5) + 1),
+                (y_top + (index * 3)),
+                graphics::LINE.to_string(),
+                "white",
+            );
+            draw(
+                (x_left_corner + (scnd_index * 5) + 2),
+                (y_top + (index * 3)),
+                graphics::LINE.to_string(),
+                "white",
+            );
+            draw(
+                (x_left_corner + (scnd_index * 5) + 3),
+                (y_top + (index * 3)),
+                graphics::LINE.to_string(),
+                "white",
+            );
 
-            draw((x_left_corner + (scnd_index * 5) + 1), (y_top + (index * 3) + 2), graphics::LINE.to_string(), "white");
-            draw((x_left_corner + (scnd_index * 5) + 2), (y_top + (index * 3) + 2), graphics::LINE.to_string(), "white");
-            draw((x_left_corner + (scnd_index * 5) + 3), (y_top + (index * 3) + 2), graphics::LINE.to_string(), "white");
+            draw(
+                (x_left_corner + (scnd_index * 5) + 1),
+                (y_top + (index * 3) + 2),
+                graphics::LINE.to_string(),
+                "white",
+            );
+            draw(
+                (x_left_corner + (scnd_index * 5) + 2),
+                (y_top + (index * 3) + 2),
+                graphics::LINE.to_string(),
+                "white",
+            );
+            draw(
+                (x_left_corner + (scnd_index * 5) + 3),
+                (y_top + (index * 3) + 2),
+                graphics::LINE.to_string(),
+                "white",
+            );
 
             // Piece
 
@@ -169,34 +235,44 @@ pub fn display_board(board: [[usize;8];8]) {
             let mut color = "";
 
             match piece {
-                1 | 2 | 3 | 4 | 5 | 6 => {
-                    color = "red"
-                },
+                1 | 2 | 3 | 4 | 5 | 6 => color = "red",
 
-                7 | 8 | 9 | 10 | 11 | 12 => {
-                    color = "green"
-                },
+                7 | 8 | 9 | 10 | 11 | 12 => color = "green",
                 _ => {}
             }
 
-            draw(x_left_corner + (scnd_index * 5) + 2, (y_top + (index * 3) + 1), graphics::PIECES[piece].to_string(), color);
+            draw(
+                x_left_corner + (scnd_index * 5) + 2,
+                (y_top + (index * 3) + 1),
+                graphics::PIECES[piece].to_string(),
+                color,
+            );
         }
 
         // Indicators
 
         // Horizontal
-        draw((x_left_corner + 2 + index * 5), (y_top - 1), index.to_string(), "white");
+        draw(
+            (x_left_corner + 2 + index * 5),
+            (y_top - 1),
+            index.to_string(),
+            "white",
+        );
 
         // Vertical
-        draw((x_left_corner - 2), (y_top + 1 + index * 3), index.to_string(), "white");
+        draw(
+            (x_left_corner - 2),
+            (y_top + 1 + index * 3),
+            index.to_string(),
+            "white",
+        );
     }
 }
 
-pub fn display_all(board: [[usize;8];8]) {
+pub fn display_all(board: [[usize; 8]; 8]) {
     clear_screen();
 
     display_board(board);
-
 }
 
 pub fn display_move(command: String) {
@@ -223,7 +299,7 @@ pub fn end_screen(w: i32) {
         "╚════════════════════════════════╝",
     ];
 
-    let x: u32 = 5;
+    let x: u32 = 20;
     let mut y: u32 = 15;
 
     for row in end_screen {
@@ -231,11 +307,34 @@ pub fn end_screen(w: i32) {
         y += 1;
     }
 
-    draw(17, 16, w.to_string(), "red");
+    match w {
+        11 => {
+            draw(32, 16, "BLACK".to_string(), "red");
+        }
+        5 => {
+            draw(32, 16, "WHITE".to_string(), "green");
+        }
+        _ => {}
+    }
 
-    process::exit(1);
+    let stdin = stdin();
+    let mut stdout = stdout().into_raw_mode().unwrap();
 
+    for c in stdin.keys() {
+        write!(
+            stdout,
+            "{}{}",
+            termion::cursor::Goto(1, 1),
+            termion::clear::CurrentLine
+        )
+        .unwrap();
 
-
-
+        match c.unwrap() {
+            Key::Char('Q') | Key::Char('q') => {
+                process::exit(1);
+                break;
+            }
+            _ => {}
+        }
+    }
 }

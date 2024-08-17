@@ -1,33 +1,32 @@
 #![feature(ascii_char)]
 
-mod rules;
 mod graphics;
+mod rules;
 
-use std::io::{Stdin, stdin, Stdout, stdout, Write};
+use std::io::{stdin, stdout, Stdin, Stdout, Write};
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::{IntoRawMode, RawTerminal};
 
-
 pub enum Mode {
     PvP,
-    AI
+    AI,
 }
 
 pub enum GameStatus {
     Started,
     Ended,
-    NotStarted
+    NotStarted,
 }
 
 pub enum CommandDebug {
     Valid,
-    InValid
+    InValid,
 }
 
 pub enum Round {
     White,
-    Black
+    Black,
 }
 
 pub struct Game {
@@ -35,9 +34,8 @@ pub struct Game {
     pub(crate) status: GameStatus,
     pub(crate) board: Board,
     pub(crate) cmd_debug: CommandDebug,
-    pub(crate) round: Round
+    pub(crate) round: Round,
 }
-
 
 pub struct Board {
     pub(crate) board: [[usize; 8]; 8],
@@ -52,7 +50,7 @@ impl Game {
             status: GameStatus::Started,
             board: Board::new(),
             cmd_debug: CommandDebug::InValid,
-            round: Round::White
+            round: Round::White,
         }
     }
 
@@ -71,17 +69,15 @@ impl Game {
                 Key::Char('h') => graphics::help_screen(),
                 Key::Char('s') => graphics::start_screen(),
                 Key::Char('r') => graphics::display_all(self.board.board),
-                Key::Char('m') => {
-                    match self.mode {
-                        Mode::PvP => {
-                            if rules::move_piece(self) == true {
-                                Game::update(self);
-                            }
+                Key::Char('m') => match self.mode {
+                    Mode::PvP => {
+                        if rules::move_piece(self) == true {
+                            Game::update(self);
                         }
-
-                        _ => {}
                     }
-                }
+
+                    _ => {}
+                },
                 _ => {}
             }
             stdout.flush().unwrap();
@@ -92,7 +88,6 @@ impl Game {
     }
 
     fn update(&mut self) {
-
         match self.round {
             Round::White => {
                 self.round = Round::Black;
@@ -104,26 +99,24 @@ impl Game {
         }
 
         graphics::display_all(self.board.board);
-
     }
-
 }
 
 impl Board {
     fn new() -> Self {
         Board {
-            board : [
-                [11, 7, 0, 0, 0, 0, 0, 1],
-                [7, 12, 0, 6, 0, 6, 6, 6],
+            board: [
+                [11, 7, 0, 0, 0, 6, 5, 1],
+                [7, 12, 0, 6, 0, 6, 1, 1],
                 [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 8, 0, 0, 0, 0],
                 [0, 0, 2, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0],
                 [0, 6, 12, 12, 0, 12, 12, 12],
-                [7, 0, 0, 0, 1, 0, 0, 7]
+                [7, 0, 0, 0, 1, 0, 0, 7],
             ],
-            white_original_position_checkers : [true, true, true],
-            black_original_position_checkers : [true, true, true],
+            white_original_position_checkers: [true, true, true],
+            black_original_position_checkers: [true, true, true],
         }
     }
 }
